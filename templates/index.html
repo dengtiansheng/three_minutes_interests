@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三分钟热情项目管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- 主页面容器 -->
+    <div id="main-container" class="container">
+        <header>
+            <h1>🎯 三分钟热情项目管理系统</h1>
+            <p class="subtitle">掌控你的探索流水线</p>
+        </header>
+
+        <!-- 统计卡片 -->
+        <div class="stats-section">
+            <div class="stat-card">
+                <div class="stat-number" id="incubator-count">0</div>
+                <div class="stat-label">兴趣孵化池</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="active-count">0</div>
+                <div class="stat-label">进行中实验</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="archive-count">0</div>
+                <div class="stat-label">已完成项目</div>
+            </div>
+        </div>
+
+        <!-- 标签页 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('incubator')">📚 兴趣孵化池</button>
+            <button class="tab-btn" onclick="showTab('experiments')">🚀 进行中实验</button>
+            <button class="tab-btn" onclick="showTab('archive')">📦 项目档案馆</button>
+        </div>
+
+        <!-- 兴趣孵化池 -->
+        <div id="incubator-tab" class="tab-content active">
+            <div class="section-header">
+                <h2>兴趣孵化池</h2>
+                <button class="btn btn-primary" onclick="showAddIdeaModal()">+ 添加想法</button>
+            </div>
+            <div id="incubator-list" class="idea-list"></div>
+        </div>
+
+        <!-- 进行中实验 -->
+        <div id="experiments-tab" class="tab-content">
+            <div class="section-header">
+                <h2>进行中的实验</h2>
+                <button class="btn btn-primary" onclick="showStartExperimentModal()">+ 启动实验</button>
+            </div>
+            <div id="experiments-list" class="experiment-list"></div>
+        </div>
+
+        <!-- 项目档案馆 -->
+        <div id="archive-tab" class="tab-content">
+            <div class="section-header">
+                <h2>项目档案馆</h2>
+            </div>
+            <div id="archive-list" class="archive-list"></div>
+        </div>
+    </div>
+
+    <!-- 实验详情页面 -->
+    <div id="detail-page" class="detail-page" style="display: none;">
+        <div class="detail-header">
+            <button class="btn btn-secondary" onclick="goBack()">← 返回</button>
+            <h2 id="detail-page-title">实验详情</h2>
+        </div>
+        <div id="detail-page-content" class="detail-content"></div>
+    </div>
+
+    <!-- 添加想法模态框 -->
+    <div id="add-idea-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('add-idea-modal')">&times;</span>
+            <h2>添加想法到孵化池</h2>
+            <form onsubmit="addIdea(event)">
+                <div class="form-group">
+                    <label>想法描述 *</label>
+                    <input type="text" id="idea-input" required placeholder="例如：学习制作视频">
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="idea-notes" rows="3" placeholder="例如：想制作量化交易科普视频"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-idea-modal')">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 启动实验模态框 -->
+    <div id="start-experiment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('start-experiment-modal')">&times;</span>
+            <h2>启动新实验</h2>
+            <form onsubmit="startExperiment(event)">
+                <div class="form-group">
+                    <label>从孵化池选择</label>
+                    <select id="idea-select" onchange="onIdeaSelectChange()">
+                        <option value="">-- 或直接输入新想法 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>想法/项目名称 *</label>
+                    <input type="text" id="experiment-idea" required placeholder="例如：学习制作视频">
+                </div>
+                <div class="form-group">
+                    <label>实验目标 *</label>
+                    <textarea id="experiment-goal" rows="2" required placeholder="例如：完成一个3分钟的视频，介绍量化交易基础"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>预算（元）</label>
+                        <input type="number" id="experiment-budget" value="0" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>实验天数</label>
+                        <input type="number" id="experiment-days" value="21" min="1">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('start-experiment-modal')">取消</button>
+                    <button type="submit" class="btn btn-primary">启动实验</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- 添加进度记录模态框 -->
+    <div id="add-progress-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('add-progress-modal')">&times;</span>
+            <h2>添加进度记录</h2>
+            <form onsubmit="submitProgress(event)">
+                <input type="hidden" id="progress-exp-id">
+                <div class="form-group">
+                    <label>进度记录 *</label>
+                    <textarea id="progress-note-input" rows="5" required placeholder="记录今天的进展、遇到的问题、学到的知识等..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-progress-modal')">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 完成实验模态框 -->
+    <div id="complete-experiment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('complete-experiment-modal')">&times;</span>
+            <h2>完成实验 - 复盘</h2>
+            <form onsubmit="completeExperiment(event)">
+                <input type="hidden" id="complete-exp-id">
+                <div class="form-group">
+                    <label>技能/认知收获</label>
+                    <textarea id="complete-skill" rows="3" placeholder="我学到了什么具体的新东西？"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>过程体验</label>
+                    <textarea id="complete-experience" rows="3" placeholder="这个过程本身好玩吗？我还想继续吗？"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>连接可能性</label>
+                    <textarea id="complete-connection" rows="3" placeholder="这个新技能/知识，能否与我已有的其他技能产生连接？"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('complete-experiment-modal')">取消</button>
+                    <button type="submit" class="btn btn-success">完成并归档</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
