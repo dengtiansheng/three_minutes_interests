@@ -115,9 +115,42 @@ async function loadIncubator() {
 async function loadExperiments() {
     try {
         const response = await fetch('/api/experiments');
-        const experiments = await response.json();
+        
+        // 检查HTTP状态
+        if (!response.ok) {
+            throw new Error(`HTTP错误: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // 检查是否有错误
+        if (data.error) {
+            console.error('加载实验失败:', data.error);
+            document.getElementById('experiments-list').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <div class="empty-state-text">加载失败: ${escapeHtml(data.error)}</div>
+                </div>
+            `;
+            return;
+        }
+        
+        // 确保data是数组
+        let experiments = [];
+        if (Array.isArray(data)) {
+            experiments = data;
+        } else if (data && typeof data === 'object') {
+            // 如果不是数组，尝试转换为数组
+            console.warn('API返回的不是数组:', data);
+            experiments = [];
+        }
         
         const container = document.getElementById('experiments-list');
+        
+        if (!container) {
+            console.error('找不到experiments-list容器');
+            return;
+        }
         
         if (experiments.length === 0) {
             container.innerHTML = `
@@ -165,6 +198,15 @@ async function loadExperiments() {
         }).join('');
     } catch (error) {
         console.error('加载实验失败:', error);
+        const container = document.getElementById('experiments-list');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <div class="empty-state-text">加载失败: ${escapeHtml(error.message)}</div>
+                </div>
+            `;
+        }
     }
 }
 

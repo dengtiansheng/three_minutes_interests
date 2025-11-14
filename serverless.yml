@@ -1,0 +1,30 @@
+# 腾讯云Serverless配置文件
+component: scf
+name: flask-app
+inputs:
+  name: flask-app
+  src: ./
+  handler: app.app
+  runtime: Python3.6
+  region: ap-guangzhou
+  description: Flask应用
+  memorySize: 256
+  timeout: 60
+  environment:
+    variables:
+      FLASK_ENV: production
+  events:
+    - apigw:
+        parameters:
+          protocols:
+            - http
+            - https
+          serviceName: serverless
+          description: Flask API Gateway
+          environment: release
+          endpoints:
+            - path: /
+              method: ANY
+            - path: /{path+}
+              method: ANY
+
