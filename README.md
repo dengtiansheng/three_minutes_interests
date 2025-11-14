@@ -25,17 +25,17 @@
 ### 1. 📚 兴趣孵化池
 记录所有让你心动的"三分钟"点子，这是你的待探索清单。随时添加想法，随时查看，随时启动实验。
 
-![兴趣孵化池截图](screenshots/incubator.png)
+<img src="screenshots/incubator.png" alt="兴趣孵化池截图" width="400">
 
 ### 2. 🚀 进行中实验
 从孵化池中选择想法，启动一个短期实验（默认21天）。设定目标、预算和验收标准，记录进度，追踪剩余时间。
 
-![进行中实验截图](screenshots/experiments.png)
+<img src="screenshots/experiments.png" alt="进行中实验截图" width="400">
 
 ### 3. 📦 项目档案馆
 实验结束后，进行复盘并归档。记录学到的技能、过程体验和连接可能性，让每个"三分钟"都成为成长的养分。
 
-![项目档案馆截图](screenshots/archive.png)
+<img src="screenshots/archive.png" alt="项目档案馆截图" width="400">
 
 ## 🎨 系统特点
 
