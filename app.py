@@ -10,6 +10,14 @@ from decimal import Decimal
 import os
 import sys
 
+# 尝试加载.env文件（如果安装了python-dotenv）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # 加载.env文件中的环境变量
+except ImportError:
+    # 如果没有安装python-dotenv，忽略错误
+    pass
+
 # 检测是否为Serverless环境
 is_serverless = bool(
     os.environ.get('TENCENTCLOUD_RUNENV') or 
@@ -75,9 +83,20 @@ def get_incubator():
     """获取兴趣孵化池列表"""
     try:
         pm = get_project_manager()
-        ideas = pm._load_json(pm.incubator_file)
-        ideas = convert_decimals(ideas)
-        return jsonify(ideas)
+        # 获取分页参数
+        page = request.args.get('page', type=int, default=1)
+        per_page = request.args.get('per_page', type=int, default=10)
+        
+        result = pm._load_json(pm.incubator_file, page=page, per_page=per_page)
+        
+        # 如果是分页结果，转换items中的Decimal
+        if isinstance(result, dict):
+            result['items'] = convert_decimals(result['items'])
+            return jsonify(result)
+        else:
+            # 兼容旧接口（无分页）
+            ideas = convert_decimals(result)
+            return jsonify(ideas)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -125,7 +144,19 @@ def get_experiments():
     """获取进行中的实验列表"""
     try:
         pm = get_project_manager()
-        experiments = pm._load_json(pm.active_file)
+        # 获取分页参数
+        page = request.args.get('page', type=int, default=1)
+        per_page = request.args.get('per_page', type=int, default=10)
+        
+        result = pm._load_json(pm.active_file, page=page, per_page=per_page)
+        
+        # 判断是分页结果还是列表结果
+        if isinstance(result, dict):
+            experiments = result['items']
+            is_paginated = True
+        else:
+            experiments = result
+            is_paginated = False
         
         # MySQL版本已经通过SQL查询过滤了active状态
         # 计算剩余天数
@@ -147,7 +178,13 @@ def get_experiments():
         experiments = convert_decimals(experiments)
         
         app.logger.info(f"返回 {len(experiments)} 个进行中的实验")
-        return jsonify(experiments)
+        
+        # 如果是分页结果，返回分页格式
+        if is_paginated:
+            result['items'] = experiments
+            return jsonify(result)
+        else:
+            return jsonify(experiments)
     except Exception as e:
         import traceback
         error_msg = traceback.format_exc()
@@ -230,9 +267,20 @@ def get_archive():
     """获取项目档案馆列表"""
     try:
         pm = get_project_manager()
-        archive = pm._load_json(pm.archive_file)
-        archive = convert_decimals(archive)
-        return jsonify(archive)
+        # 获取分页参数
+        page = request.args.get('page', type=int, default=1)
+        per_page = request.args.get('per_page', type=int, default=10)
+        
+        result = pm._load_json(pm.archive_file, page=page, per_page=per_page)
+        
+        # 如果是分页结果，转换items中的Decimal
+        if isinstance(result, dict):
+            result['items'] = convert_decimals(result['items'])
+            return jsonify(result)
+        else:
+            # 兼容旧接口（无分页）
+            archive = convert_decimals(result)
+            return jsonify(archive)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -257,8 +305,8 @@ def delete_archive_item(archive_id):
     """删除归档项目"""
     try:
         pm = get_project_manager()
-        # MySQL版本：直接删除数据库记录
-        sql = "DELETE FROM archive WHERE id = %s"
+        # MySQL版本：直接删除数据库记录（使用统一的projects表）
+        sql = "DELETE FROM projects WHERE id = %s AND status = 'archived'"
         pm._execute_query(sql, (archive_id,), fetch=False)
         return jsonify({'success': True})
     except Exception as e:
@@ -308,10 +356,10 @@ def get_stats():
 # 根据腾讯云文档：Web Function必须监听0.0.0.0:9000
 if __name__ == '__main__':
     # Serverless环境：监听0.0.0.0:9000
-    # 本地开发：监听127.0.0.1:5000
+    # 本地开发：监听127.0.0.1:9000
     if os.environ.get('TENCENTCLOUD_RUNENV') or os.environ.get('SCF_RUNTIME'):
         # Serverless环境
         app.run(host='0.0.0.0', port=9000)
     else:
         # 本地开发环境
-        app.run(debug=True, host='127.0.0.1', port=5000)
+        app.run(debug=True, host='127.0.0.1', port=9000)

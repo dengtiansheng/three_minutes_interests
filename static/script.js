@@ -1,5 +1,11 @@
 // 全局变量
 let currentExperimentId = null;
+// 分页状态
+let paginationState = {
+    incubator: { page: 1, per_page: 10 },
+    experiments: { page: 1, per_page: 10 },
+    archive: { page: 1, per_page: 10 }
+};
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -78,10 +84,23 @@ async function loadStats() {
 }
 
 // 加载兴趣孵化池
-async function loadIncubator() {
+async function loadIncubator(page = null) {
     try {
-        const response = await fetch('/api/incubator');
-        const ideas = await response.json();
+        const currentPage = page || paginationState.incubator.page;
+        const perPage = paginationState.incubator.per_page;
+        const response = await fetch(`/api/incubator?page=${currentPage}&per_page=${perPage}`);
+        const data = await response.json();
+        
+        // 判断是分页结果还是列表结果（兼容旧接口）
+        let ideas, pagination;
+        if (data.items && data.total !== undefined) {
+            ideas = data.items;
+            pagination = data;
+            paginationState.incubator.page = currentPage;
+        } else {
+            ideas = data;
+            pagination = null;
+        }
         
         const container = document.getElementById('incubator-list');
         
@@ -92,6 +111,7 @@ async function loadIncubator() {
                     <div class="empty-state-text">兴趣孵化池是空的，快添加一些想法吧！</div>
                 </div>
             `;
+            document.getElementById('incubator-pagination').innerHTML = '';
             return;
         }
         
@@ -106,15 +126,26 @@ async function loadIncubator() {
                 </div>
             </div>
         `).join('');
+        
+        // 渲染分页控件
+        if (pagination) {
+            renderPagination('incubator-pagination', pagination, function(newPage) {
+                loadIncubator(newPage);
+            });
+        } else {
+            document.getElementById('incubator-pagination').innerHTML = '';
+        }
     } catch (error) {
         console.error('加载孵化池失败:', error);
     }
 }
 
 // 加载进行中的实验
-async function loadExperiments() {
+async function loadExperiments(page = null) {
     try {
-        const response = await fetch('/api/experiments');
+        const currentPage = page || paginationState.experiments.page;
+        const perPage = paginationState.experiments.per_page;
+        const response = await fetch(`/api/experiments?page=${currentPage}&per_page=${perPage}`);
         
         // 检查HTTP状态
         if (!response.ok) {
@@ -132,17 +163,23 @@ async function loadExperiments() {
                     <div class="empty-state-text">加载失败: ${escapeHtml(data.error)}</div>
                 </div>
             `;
+            document.getElementById('experiments-pagination').innerHTML = '';
             return;
         }
         
-        // 确保data是数组
-        let experiments = [];
-        if (Array.isArray(data)) {
+        // 判断是分页结果还是列表结果（兼容旧接口）
+        let experiments, pagination;
+        if (data.items && data.total !== undefined) {
+            experiments = data.items;
+            pagination = data;
+            paginationState.experiments.page = currentPage;
+        } else if (Array.isArray(data)) {
             experiments = data;
-        } else if (data && typeof data === 'object') {
-            // 如果不是数组，尝试转换为数组
-            console.warn('API返回的不是数组:', data);
+            pagination = null;
+        } else {
+            console.warn('API返回的数据格式不正确:', data);
             experiments = [];
+            pagination = null;
         }
         
         const container = document.getElementById('experiments-list');
@@ -159,6 +196,7 @@ async function loadExperiments() {
                     <div class="empty-state-text">当前没有进行中的实验</div>
                 </div>
             `;
+            document.getElementById('experiments-pagination').innerHTML = '';
             return;
         }
         
@@ -170,12 +208,9 @@ async function loadExperiments() {
             return `
                 <div class="experiment-card">
                     <h3>${escapeHtml(exp.idea)}</h3>
+                    ${exp.notes ? `<div class="notes">${escapeHtml(exp.notes)}</div>` : ''}
                     <div class="goal">目标: ${escapeHtml(exp.goal)}</div>
                     <div class="meta">
-                        <div class="meta-item">
-                            <span class="meta-item-label">预算</span>
-                            <span class="meta-item-value">¥${exp.budget}</span>
-                        </div>
                         <div class="meta-item">
                             <span class="meta-item-label">开始日期</span>
                             <span class="meta-item-value">${exp.start_date}</span>
@@ -196,6 +231,15 @@ async function loadExperiments() {
                 </div>
             `;
         }).join('');
+        
+        // 渲染分页控件
+        if (pagination) {
+            renderPagination('experiments-pagination', pagination, function(newPage) {
+                loadExperiments(newPage);
+            });
+        } else {
+            document.getElementById('experiments-pagination').innerHTML = '';
+        }
     } catch (error) {
         console.error('加载实验失败:', error);
         const container = document.getElementById('experiments-list');
@@ -207,14 +251,28 @@ async function loadExperiments() {
                 </div>
             `;
         }
+        document.getElementById('experiments-pagination').innerHTML = '';
     }
 }
 
 // 加载项目档案馆
-async function loadArchive() {
+async function loadArchive(page = null) {
     try {
-        const response = await fetch('/api/archive');
-        const archive = await response.json();
+        const currentPage = page || paginationState.archive.page;
+        const perPage = paginationState.archive.per_page;
+        const response = await fetch(`/api/archive?page=${currentPage}&per_page=${perPage}`);
+        const data = await response.json();
+        
+        // 判断是分页结果还是列表结果（兼容旧接口）
+        let archive, pagination;
+        if (data.items && data.total !== undefined) {
+            archive = data.items;
+            pagination = data;
+            paginationState.archive.page = currentPage;
+        } else {
+            archive = data;
+            pagination = null;
+        }
         
         const container = document.getElementById('archive-list');
         
@@ -225,6 +283,7 @@ async function loadArchive() {
                     <div class="empty-state-text">项目档案馆是空的</div>
                 </div>
             `;
+            document.getElementById('archive-pagination').innerHTML = '';
             return;
         }
         
@@ -232,6 +291,7 @@ async function loadArchive() {
             <div class="archive-card">
                 <h3>${escapeHtml(entry.idea)}</h3>
                 <div class="time-range">${entry.start_date} → ${entry.end_date} | 完成于: ${entry.completed_at}</div>
+                ${entry.notes ? `<div class="notes">${escapeHtml(entry.notes)}</div>` : ''}
                 <div class="goal">目标: ${escapeHtml(entry.goal)}</div>
                 ${entry.skill_learned || entry.experience || entry.connection ? `
                     <div class="review">
@@ -261,6 +321,15 @@ async function loadArchive() {
                 </div>
             </div>
         `).join('');
+        
+        // 渲染分页控件
+        if (pagination) {
+            renderPagination('archive-pagination', pagination, function(newPage) {
+                loadArchive(newPage);
+            });
+        } else {
+            document.getElementById('archive-pagination').innerHTML = '';
+        }
     } catch (error) {
         console.error('加载档案馆失败:', error);
     }
@@ -346,7 +415,6 @@ async function showStartExperimentModal() {
     document.getElementById('start-experiment-modal').classList.add('active');
     document.getElementById('experiment-idea').value = '';
     document.getElementById('experiment-goal').value = '';
-    document.getElementById('experiment-budget').value = '0';
     document.getElementById('experiment-days').value = '21';
     document.getElementById('idea-select').value = '';
 }
@@ -396,7 +464,6 @@ async function startExperiment(event) {
     const ideaSelect = document.getElementById('idea-select').value;
     const idea = document.getElementById('experiment-idea').value.trim();
     const goal = document.getElementById('experiment-goal').value.trim();
-    const budget = parseFloat(document.getElementById('experiment-budget').value) || 0;
     const days = parseInt(document.getElementById('experiment-days').value) || 21;
     
     if (!idea || !goal) {
@@ -414,7 +481,7 @@ async function startExperiment(event) {
                 idea_id: ideaSelect || null,
                 idea: idea,
                 goal: goal,
-                budget: budget,
+                budget: 0,
                 days: days
             })
         });
@@ -469,6 +536,12 @@ async function showExperimentDetail(expId) {
         document.getElementById('detail-page-title').textContent = exp.idea;
         document.getElementById('detail-page-content').innerHTML = `
             <div class="detail-card">
+                ${exp.notes ? `
+                <div class="detail-section">
+                    <h3>📝 备注</h3>
+                    <p class="detail-text">${escapeHtml(exp.notes)}</p>
+                </div>
+                ` : ''}
                 <div class="detail-section">
                     <h3>🎯 实验目标</h3>
                     <p class="detail-text">${escapeHtml(exp.goal)}</p>
@@ -477,10 +550,6 @@ async function showExperimentDetail(expId) {
                 <div class="detail-section">
                     <h3>📊 基本信息</h3>
                     <div class="meta-grid">
-                        <div class="meta-item">
-                            <span class="meta-item-label">预算</span>
-                            <span class="meta-item-value">¥${exp.budget}</span>
-                        </div>
                         <div class="meta-item">
                             <span class="meta-item-label">开始日期</span>
                             <span class="meta-item-value">${exp.start_date}</span>
@@ -542,6 +611,12 @@ async function showArchiveDetail(archiveId) {
         document.getElementById('detail-page-title').textContent = entry.idea;
         document.getElementById('detail-page-content').innerHTML = `
             <div class="detail-card">
+                ${entry.notes ? `
+                <div class="detail-section">
+                    <h3>📝 备注</h3>
+                    <p class="detail-text">${escapeHtml(entry.notes)}</p>
+                </div>
+                ` : ''}
                 <div class="detail-section">
                     <h3>🎯 实验目标</h3>
                     <p class="detail-text">${escapeHtml(entry.goal)}</p>
@@ -754,5 +829,66 @@ window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.classList.remove('active');
     }
+}
+
+// 渲染分页控件
+function renderPagination(containerId, pagination, onPageChange) {
+    const container = document.getElementById(containerId);
+    if (!container || pagination.pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    const { page, pages, total } = pagination;
+    let html = '<div class="pagination-info">';
+    html += `共 ${total} 条，第 ${page}/${pages} 页`;
+    html += '</div><div class="pagination-buttons">';
+    
+    // 创建唯一的事件处理函数名
+    const handlerName = `paginationHandler_${containerId.replace('-', '_')}`;
+    window[handlerName] = onPageChange;
+    
+    // 上一页按钮
+    if (page > 1) {
+        html += `<button class="pagination-btn" onclick="${handlerName}(${page - 1})">上一页</button>`;
+    } else {
+        html += '<button class="pagination-btn disabled" disabled>上一页</button>';
+    }
+    
+    // 页码按钮（显示当前页前后各2页）
+    const startPage = Math.max(1, page - 2);
+    const endPage = Math.min(pages, page + 2);
+    
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="${handlerName}(1)">1</button>`;
+        if (startPage > 2) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === page) {
+            html += `<button class="pagination-btn active">${i}</button>`;
+        } else {
+            html += `<button class="pagination-btn" onclick="${handlerName}(${i})">${i}</button>`;
+        }
+    }
+    
+    if (endPage < pages) {
+        if (endPage < pages - 1) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+        html += `<button class="pagination-btn" onclick="${handlerName}(${pages})">${pages}</button>`;
+    }
+    
+    // 下一页按钮
+    if (page < pages) {
+        html += `<button class="pagination-btn" onclick="${handlerName}(${page + 1})">下一页</button>`;
+    } else {
+        html += '<button class="pagination-btn disabled" disabled>下一页</button>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
