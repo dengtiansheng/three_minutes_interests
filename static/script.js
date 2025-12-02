@@ -422,8 +422,17 @@ async function showStartExperimentModal() {
 // 加载想法到选择框
 async function loadIdeasToSelect() {
     try {
-        const response = await fetch('/api/incubator');
-        const ideas = await response.json();
+        // 获取所有想法（不分页），用于下拉选择
+        const response = await fetch('/api/incubator?per_page=1000');
+        const data = await response.json();
+        
+        // 判断是分页结果还是列表结果（兼容旧接口）
+        let ideas;
+        if (data.items && data.total !== undefined) {
+            ideas = data.items;
+        } else {
+            ideas = data;
+        }
         
         const select = document.getElementById('idea-select');
         select.innerHTML = '<option value="">-- 或直接输入新想法 --</option>';
@@ -446,9 +455,17 @@ function onIdeaSelectChange() {
     
     if (select.value) {
         // 从API获取想法详情
-        fetch('/api/incubator')
+        fetch('/api/incubator?per_page=1000')
             .then(res => res.json())
-            .then(ideas => {
+            .then(data => {
+                // 判断是分页结果还是列表结果
+                let ideas;
+                if (data.items && data.total !== undefined) {
+                    ideas = data.items;
+                } else {
+                    ideas = data;
+                }
+                
                 const idea = ideas.find(i => i.id == select.value);
                 if (idea) {
                     ideaInput.value = idea.idea;
